@@ -1,0 +1,30 @@
+Confirmar con el profe si esto lo pongo en el .gitignore
+
+# Archivos y carpetas generados por XV6
+xv6-riscv/fs.img
+xv6-riscv/build/
+xv6-riscv/user/_*
+xv6-riscv/kernel/_*
+xv6-riscv/*.o
+xv6-riscv/*.out
+xv6-riscv/*.log
+xv6-riscv/*~
+xv6-riscv/*.swp
+
+# Archivos y carpetas generados por QEMU
+qemu/build/
+qemu/*.o
+qemu/*.out
+qemu/*.log
+qemu/*~
+qemu/*.swp
+
+# Configuraciones de editor
+.vscode/
+.idea/
+
+# Archivos temporales y de respaldo
+*~
+*.swp
+*.bak
+*.tmp
