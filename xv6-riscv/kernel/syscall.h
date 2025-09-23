@@ -20,3 +20,5 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+#define SYS_getppid 22        //Número de syscall para getppid
+#define SYS_getancestror 23   //Número de syscall para getancestror

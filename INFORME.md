@@ -1,108 +1,137 @@
-# Ignacio Soto y Benjamín Urrutia - Guía de pasos para instalar XV6 y QEMU
+# Ignacio Soto y Benjamín Urrutia - Guía de pasos realizar la Tarea 1.
 
-En este markdown puede encontrar todos los pasos necesarios para instalar XV6-riscv y QEMU. Notar que todos estos pasos se ejecutaronen el bash o terminal de Ubuntu WSL.
+En este markdown puede encontrar todos los pasos necesarios para realizar la Tarea 1.
 
-## Instrucciones seguidas hasta detectar algún problema.
+## Instrucciones seguidas para realizar ambas partes de la tarea.
 
-### 1) Primero es necesario preparar el ambiente de WSL para instalar ambos programas. Para ello, hay que actualizar el ambiente con los siguientes comandos:
+### 1) Para completar la parte I, se tiene que ir a la carpeta del kernel y editar el archivo de sysproc.c, agregando estas líneas:
 
-```bash
-sudo apt update
-sudo apt upgrade
-sudo apt install -y build-essential git qemu-system-x86 qemu-system-misc gdb-multiarch
+```c
+uint64
+sys_getppid(void)
+//Se crea un nuevo syscall para obtener el ID del proceso padre
+{
+  struct proc *curr_proc = myproc(); //Puntero al proceso actual
+  if(curr_proc->parent == (void*)0){ //Este void*0 es NULL
+    //Si el proceso actual no tiene padre, se devuelve -1
+    return -1;
+  }
+  return curr_proc->parent->pid; //Retorna el ID del proceso padre
+}
 ```
 
-El último comando permitirá instalar todo lo necesario para compilar y correr xv6-riscv, incluyendo herramientas de desarrollo, control de versiones, el emulador QEMU y el depurador. Notar que no es `qemu-system`, sino que `qemu-system-misc` porque éste incluye QEMU para arquitecturas adicionales, como qemu-system-riscv64 (necesario para xv6-riscv).
+### 2) Para completar la parte II, se tiene que ir a la carpeta del kernel y editar el archivo de sysproc.c, agregando estas líneas:
 
-_Nota: La parte de `gdb-multiarch` es opcional, ya que es depurador (en espífico, para arquitecturas no-x86 como riscv)._
-
-### 2) Luego, hay que instalar el compilador para generar los binarios de riscv (versión a instalar), para ello hay que ejecutar el siguiente comando:
-
-```bash
-sudo apt install -y gcc-riscv64-unknown-elf
+```c
+uint64
+sys_getancestror(void)
+/*
+Se crea un nuevo syscall para obtener el ID de un ancestro en una generación determinada. Si la generación no existe, devuelve -1
+Notar que Generación 0 es el proceso actual, generación 1 es el proceso padre, generación 2 es el proceso abuelo y así sucesivamente.
+*/
+{
+  int num_gen; //Variable para obtener el número de generaciones desde el argumento de la función
+  argint(0,&num_gen); //Obtiene el número de generaciones desde el argumento de la función
+  int cont_gen = 0;
+  struct proc *curr_proc = myproc(); //Puntero que recorre la lista de procesos ancestros
+  while(curr_proc->parent != (void*)0 && cont_gen < num_gen){ //Lo recorre hasta llegar a la generación deseada o al proceso raíz
+    cont_gen++;
+    curr_proc = curr_proc->parent; //Avanzar al proceso padre de cada proceso
+  }
+  if(cont_gen == num_gen){ //Si se llega a la generación deseada, devuelve el ID de ese proceso ancestro
+    return curr_proc->pid;
+  }
+  return -1; // Si no, devuelve -1 (se llegó al proceso raíz)
+}
 ```
 
-### 3) Una vez instalado el compilador, hay que instalar xv6-riscv. Para este paso es necesario usar el siguiente comando:
+### 3) Para que ambas funciones logren realizar su finalidad, se agrega se debe agregar su nro de identificación de systemcall para que el procesador las pueda identificar. Para esto hay que dirigirse a la carpeta de kernel y luego a syscall.h agregando las siguiente líneas al final del archivo:
 
-```bash
-git clone https://github.com/mit-pdos/xv6-riscv.git
+```h
+#define SYS_getppid 22        //Número de syscall para getppid
+#define SYS_getancestror 23   //Número de syscall para getancestror
 ```
 
-_Nota: este comando es brindado según el material del curso._
+### 4) Para que pueda llamar ambas funciones que se definieron en sysproc.c, primero se debe editar el archivo syscall.c de la carpeta kernel (luego de la línea 103):
 
-### 4) Para proceder a la compilación de xv6, dirijase al directorio de xv6-riscv con `cd xv6-riscv` y luego ejecute `make` para compilarlo.
-
-Esto permitirá ejecutar el makefile del proyecto xv6, compilar todos los archivos fuente y generar el kernel que correrá en QEMU.
-
-### 5) Luego, para ejecutar QEMU y abrir la consola de xv6 hay que hacer el siguiente comando:
-
-```bash
-make qemu
-```
-Importante saber que este comando carga el kernel que se generó con el `make` anterior, permitiendo la interacción con el sistema operativo.
-
-**Nota importante (Problema encontrado):** Luego de ejecutar `make qemu`, se obtuvo el siguiente error
-
-```
-root@acer-nacho:/home/Universidad/SO/xv6-riscv# make qemu
-ERROR: Need qemu version >= 7.2
+```c
+extern uint64 sys_getppid(void);         //Línea agregada para getppid
+extern uint64 sys_getancestror(void);    //Línea agregada para getancestror
 ```
 
-## Instrucciones seguidas luego del problema para su resolución.
+### 5) Lo 2do que se requiere para que pueda llamar ambas funciones que se definieron en sysproc.c, se debe editar el archivo syscall.c de la carpeta kernel de tal manera de que las funciones se agreguen al array de punteros de funciones (donde el índice es el identificador que se puso en syscall.h)
 
-Como se puede notar en el paso 5 de la sección anterior, la versión instalada de QEMU era menor a la necesaria para ejecutar `make qemu`. Es por ello que se realizaron los siguientes pasos.
-
-### I) Se instalan nuevas dependencias necesarias para QEMU y su creación de entornos virtuales:
-
-```bash
-sudo apt update
-sudo apt install python3-venv
-sudo apt install -y git libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev ninja-build pkg-config
+```c
+[SYS_getppid] sys_getppid,         //Línea agregada para getppid
+[SYS_getancestror] sys_getancestror, //Línea agregada para getancestror
 ```
 
-### II) Hay que cambiarse de directorio (con un directorio detras de `/xv6-riscv` basta, es decir, se usa `cd ..`) y luego hay que ejecutar:
+### 6) Luego, en la carpeta de user, se debe editar el archivo user.h para "definir" la llamada a la función del kernel. Para esto se deben agregar las siguientes líneas:
 
-```bash
-git clone https://gitlab.com/qemu-project/qemu.git
+```c
+int getppid(void);
+int getancestror(int);
 ```
 
-### III) Una vez clonado el repositorio, hay que avanzar al directorio de qemu con `cd qemu` y ejecutar `git checkout v8.2.0` para estar en una versión estable de QEMU.
+### 7) Después, en la carpeta de user, se debe editar el archivo de usys.pl para que quitarle el prefijo "sys" a la función y que se llame como en el archivo user.h (ambas funciones definidas en el paso anterior)
 
-### IV) Después, se debe crear un directorio de compilación:
-
-```bash
-mkdir build
-cd build
+```pl
+entry("getppid");         #Línea agregada para getppid
+entry("getancestror");    #Línea agregada para getancestror
 ```
 
-### V) Luego, para configurar la compilación de QEMU (y compilar el emulador de riscv), se ejecuta:
+## Instrucciones seguidas para realizar pruebas de la tarea.
 
-```bash
-../configure --target-list=riscv64-softmmu
+### 1) Primero, para probar la función de getppid se creó el archivo "yosoytupadre.c" en la carpeta user:
+
+```c
+#include "kernel/types.h"
+#include "user.h"
+
+int main() {
+  int pid = fork();
+  if (pid < 0) {
+    printf("Fork failed\n");
+    exit(1);
+  } else if (pid == 0) {
+    // Proceso hijo
+    printf("Hola, soy el proceso: PID = %d, mi padre tiene el: ID = %d\n", getpid(), getppid());
+    exit(0);
+  } else {
+    // Proceso padre
+    wait(0); // Esperar a que el hijo termine
+    printf("Hola, soy el proceso: PID = %d, mi hijo tiene el: ID = %d\n", getpid(), pid);
+  }
+  exit(0);
+}
 ```
 
-### VI) Una vez configurado, se procede con la compilación (usando todos los núcleos):
+### 2) Luego, para hacer la prueba sobre getancestror se creó el archivo "test_ancestror.c" en la carpeta user:
 
-```bash
-make -j$(nproc)
+```c
+#include "kernel/types.h"
+#include "user.h"
+
+int main() {
+  printf("Hola, soy el proceso : %d\n", getancestror(0));
+  printf("Mi padre es : %d\n", getancestror(1));
+  printf("Mi abuelo es : %d\n", getancestror(2));
+  printf("Mi bisabuelo es : %d\n", getancestror(3)); // Esto debería devolver -1 ya que el bisabuelo no existe, el kernel tiene 2 procesos iniciales.
+  exit(0);
+}
 ```
 
-### VII) Y luego, sigue la instalación:
+### 3) Luego para compilar ambas pruebas se deben agregar en el Makefile en la parte de UPROGS:
 
-```bash
-sudo make install
+```Makefile
+	$U/_yosoytupadre\
+	$U/_test_ancestror\
 ```
 
-### VIII) (Opcional) Se puede verificar que la versión de QEMU sea mayor a 7.2 con:
+### 4) Como se puede observar en las siguientes imagenes, las pruebas funcionan correctamente:
 
-```bash
-qemu-system-riscv64 --version
-```
+![Prueba exitosa](image.png)
 
-### IX) Por último, hay que dirijirse a `/xv6-riscv` y abrir la consola de xv6-riscv usando:
+## Dificultades encontradas:
 
-```bash
-make qemu
-```
-## Captura de pantalla que demuestra instalación y uso
-![Imagen Demostrativa de instalación](ImagenVerificadora.png)
+## Funcionamiento del Syscall:
