@@ -128,10 +128,20 @@ int main() {
 	$U/_test_ancestror\
 ```
 
-### 4) Como se puede observar en las siguientes imagenes, las pruebas funcionan correctamente:
+### 4) Como se puede observar en la siguiente imagen, las pruebas funcionan correctamente:
 
 ![Prueba exitosa](image.png)
 
 ## Dificultades encontradas:
 
+La principal dificultad al implementar las syscall fue comprender la arquitectura de xv6. Esto requirió tiempo de lectura y análisis del código del kernel para entender el rol de cada archivo. En particular, fue necesario identificar dónde se almacenaba el PCB de cada proceso, lo cual se encontró en el archivo proc.h, definido en la estructura proc. Una vez comprendido esto, resultó más sencillo entender que las syscall solicitadas consistían básicamente en recorrer una lista enlazada simple, ya que cada proceso posee un puntero hacia otro struct proc que representa a su proceso padre.
+
+La implementación de las syscall en sí no presentó mayor complejidad, dado que en el archivo syscall.h se observa claramente que estas se identifican con un número entero, el cual se almacena en un registro de RISC-V. Luego, al invocar la interrupción de syscall, se accede al arreglo de punteros a funciones para ejecutar la llamada correspondiente, al igual que ocurre en sistemas operativos modernos como Linux.
+
+Una dificultad más relevante surgió al intentar llamar a las syscall desde la carpeta user. No bastaba con definirlas en user.h; también era necesario escribir la función sin el prefijo sys dentro de usys.pl. Este archivo se encarga de mapear las funciones del kernel (con prefijo sys) y exponerlas al usuario sin él, lo que inicialmente resultó confuso.
+
+Finalmente, una dificultad menor apareció al notar que, al no contar con librerías estándar de C, no estaban disponibles macros habituales como NULL. Esto generó problemas al recorrer la lista de procesos. Fue necesario investigar su definición y se descubrió que NULL corresponde a (void*)0.
+
 ## Funcionamiento del Syscall:
+
+En xv6, las syscall funcionan a través de una tabla (un arreglo de punteros a funciones) que asocia cada llamada con un número identificador. Cuando un proceso en user mode necesita invocar una syscall, carga en un registro de RISC-V el número correspondiente. Posteriormente, se realiza la transición a kernel mode, donde el sistema lee dicho registro, localiza en la tabla la dirección de memoria de la función asociada, la ejecuta y, finalmente, retorna el control al user mode. Este mecanismo es similar al utilizado en los sistemas Unix, en los que xv6 está inspirado.
