@@ -45,7 +45,7 @@ Notar que Generación 0 es el proceso actual, generación 1 es el proceso padre,
 }
 ```
 
-### 3) Para que ambas funciones logren realizar su finalidad, se agrega se debe agregar su nro de identificación de systemcall para que el procesador las pueda identificar. Para esto hay que dirigirse a la carpeta de kernel y luego a syscall.h agregando las siguiente líneas al final del archivo:
+### 3) Para que ambas funciones logren realizar su finalidad, se debe agregar su número de identificación de systemcall para que el procesador las pueda identificar. Para esto hay que dirigirse a la carpeta de kernel y luego a syscall.h agregando las siguiente líneas al final del archivo:
 
 ```h
 #define SYS_getppid 22        //Número de syscall para getppid
@@ -59,7 +59,7 @@ extern uint64 sys_getppid(void);         //Línea agregada para getppid
 extern uint64 sys_getancestror(void);    //Línea agregada para getancestror
 ```
 
-### 5) Lo 2do que se requiere para que pueda llamar ambas funciones que se definieron en sysproc.c, se debe editar el archivo syscall.c de la carpeta kernel de tal manera de que las funciones se agreguen al array de punteros de funciones (donde el índice es el identificador que se puso en syscall.h)
+### 5) Lo segundo que se requiere para que pueda llamar ambas funciones que se definieron en sysproc.c, se debe editar el archivo syscall.c de la carpeta kernel de tal manera de que las funciones se agreguen al array de punteros de funciones (donde el índice es el identificador que se puso en syscall.h)
 
 ```c
 [SYS_getppid] sys_getppid,         //Línea agregada para getppid
@@ -145,3 +145,11 @@ Finalmente, una dificultad menor apareció al notar que, al no contar con librer
 ## Funcionamiento del Syscall:
 
 En xv6, las syscall funcionan a través de una tabla (un arreglo de punteros a funciones) que asocia cada llamada con un número identificador. Cuando un proceso en user mode necesita invocar una syscall, carga en un registro de RISC-V el número correspondiente. Posteriormente, se realiza la transición a kernel mode, donde el sistema lee dicho registro, localiza en la tabla la dirección de memoria de la función asociada, la ejecuta y, finalmente, retorna el control al user mode. Este mecanismo es similar al utilizado en los sistemas Unix, en los que xv6 está inspirado.
+
+## Nota sobre el uso de locks
+
+En el caso particular de las syscalls getppid y getancestror, no fue necesario utilizar un lock ya que ambas realizan únicamente operaciones de lectura sobre el puntero parent.
+
+En el peor de los casos, podría ocurrir una condición de carrera en la que el proceso padre termine antes y el puntero cambie de forma que el ppid pase a ser 1 (el de init). Esto implicaría que el valor leído por la syscall no refleje el cambio más reciente, ya que tanto el proceso como la syscall están accediendo directamente al mismo puntero en memoria.
+
+Este comportamiento es aceptable dado que la operación no modifica estructuras críticas del kernel, sino que simplemente consulta la cadena de ancestros.
