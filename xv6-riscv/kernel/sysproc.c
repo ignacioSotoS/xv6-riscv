@@ -105,3 +105,30 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_settickets(void)  //Permite modificar la cantidad de tickets
+{
+  int tickets;                                                //Variable to get the number of generations via function argument
+  argint(0, &tickets);                                         //Get the number of generations from the function argument
+
+  if(tickets <= 0){
+    tickets = 1;   //En caso de no ser positivo , se asigna 1 ticket
+  }
+  struct proc *curr_proc = myproc();
+  
+  if(curr_proc == (void*)0){
+    return -1;  // Si falla, retorna -1
+
+  }else{
+    curr_proc->tickets = tickets;  //Asignar la cantidad de tickets al proceso actual
+  }
+  return 0;
+}
+
+
+uint64
+sys_getslices(void) //New syscall to get the run_slices of the current process 
+{
+  return myproc()->run_slices; //Return the pid of the parent process
+}
