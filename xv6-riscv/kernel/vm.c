@@ -484,3 +484,49 @@ ismapped(pagetable_t pagetable, uint64 va)
   }
   return 0;
 }
+
+int
+mrdprotect(void *addr, int len) //función que quita el permiso de lectura
+{
+  struct proc *p = myproc(); 
+  uint64 va = (uint64)addr; //obtiene la dirección virtual conviertiendolo a un enterno sin signos
+
+  if((va % PGSIZE != 0) || (len <= 0)) //revisa y valida que el tamaño de la dir. virtual sea coherente con el tamaño de página y que la cantidad de páginas sea mayor a 0 (para avanzar)
+    return -1;
+
+  for(int i = 0; i < len; i++){ //se recorre cada pagina del page table con ayuda de walk 
+    pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0); //walk retorna el PTE del último nivel (nivel 0), que mapea la página física
+    if( (pte == 0) || ((*pte & PTE_V) == 0) || ((*pte & PTE_U) == 0)) 
+      return -1; //como lo pide la tarea, si no existe el PTE, no es válido/mapeable o no es de usuario (es de kernel), retorna -1
+
+    //quita el permiso de lectura para la página
+    *pte &= ~PTE_R;
+  }
+
+  //limpia el TLB
+  sfence_vma();
+
+  return 0;
+}
+
+int
+munrdprotect(void *addr, int len) //función que otorga el permiso de lectura
+{
+  struct proc *p = myproc(); 
+  uint64 va = (uint64)addr;
+
+  if((va % PGSIZE != 0) || (len <= 0)) //realiza las mismas validaciones que la función anterior
+    return -1;
+
+  for(int i = 0; i < len; i++){ //se mantiene la estructura del ciclo for, excepto su final
+    pte_t *pte = walk(p->pagetable, va + i*PGSIZE, 0);  
+    if( (pte == 0) || ((*pte & PTE_V) == 0) || ((*pte & PTE_U) == 0))
+      return -1; 
+
+    //restaura el permiso de lectura para cada página
+    *pte |= PTE_R; 
+    
+  }
+  sfence_vma(); //al igual que antes, limpia el TLB
+  return 0;
+}

@@ -105,3 +105,27 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_mrdprotect(void)
+{
+  uint64 addr; //dir. virtual
+  int len; //cantidad de páginas
+
+  argaddr(0, &addr); //obtiene el primer argumento (dir. virtual)
+  argint(1, &len); //obtiene el segundo argumento (cantidad de páginas)
+
+  return mrdprotect((void*)addr, len); //se opera la función, desde el syscall
+}
+
+uint64
+sys_munrdprotect(void)
+{
+  uint64 addr; //lo mismo que antes
+  int len;
+
+  argaddr(0, &addr); //lo mismo
+  argint(1, &len);
+
+  return munrdprotect((void*)addr, len); //lo mismo que antes
+}
